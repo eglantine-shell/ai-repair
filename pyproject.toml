@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-manuscript-repair"
+version = "0.2.0"
+description = "Understanding-based minimal repair for accepted Chinese AI manuscripts"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "openai-codex>=0.144,<1",
+  "pdfplumber>=0.11,<0.12",
+  "pydantic>=2.12,<3",
+  "pypdf>=6.0,<7",
+]
+
+[project.optional-dependencies]
+test = [
+  "reportlab>=4.4,<5",
+]
+
+[project.scripts]
+ai-manuscript-repair = "ai_manuscript_repair.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

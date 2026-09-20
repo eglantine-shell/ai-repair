@@ -1,0 +1,6 @@
+interface:
+  display_name: "AI 稿件最小修复"
+  short_description: "理解驱动的 AI 稿件局部语言修复"
+  default_prompt: "Use $ai-manuscript-repair to minimally repair this accepted AI-generated manuscript."
+policy:
+  allow_implicit_invocation: true
