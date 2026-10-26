@@ -27,6 +27,12 @@ on semantic language failures that ordinary surface checking often misses:
 - mechanical repetition or emphasis with no semantic function;
 - claim strength distorted by generated wording.
 
+Exact glyph placement is a presentation preference, not an acceptance gate for
+direct repair. When the model's original span is exact in the extracted page
+text but PDF glyph order prevents reliable underlining, preserve the edit as a
+right-margin comment with the complete original and correction. This fallback
+must not relax the requirement that the original span occur on the stated page.
+
 ### Consistency exposure (optional, experimental)
 
 The yellow layer is disabled by default because its semantic clustering is less
@@ -61,4 +67,6 @@ full-book experiment while removing dependencies on the general
 explicit opt-in experiment. The package currently targets horizontal,
 text-layer Chinese PDFs. Scanned pages and complex vertical or multi-column
 layouts require a separate text-recovery stage and are intentionally outside
-version 0.2.
+version 0.3.
+
+主审返回的结构有效修改全部保留，不再追加模型复核或助手主观筛选，不删除或改写已检出项。用户决定是否采用；页面覆盖、结构、原文锚定及交付完整性校验仍保留。

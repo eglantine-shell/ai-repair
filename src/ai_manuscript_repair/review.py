@@ -208,6 +208,24 @@ def _locatable(packet: PagePacket, text: str, occurrence_index: int) -> bool:
     return False
 
 
+def _present_in_page_text(
+    packet: PagePacket, text: str, occurrence_index: int
+) -> bool:
+    needle = compact_text(text)
+    haystack = compact_text(packet.page_text)
+    matches = 0
+    cursor = 0
+    while needle:
+        found = haystack.find(needle, cursor)
+        if found < 0:
+            break
+        if matches == occurrence_index:
+            return True
+        matches += 1
+        cursor = found + 1
+    return False
+
+
 def validate_direct_review(review: DirectBatchReview, batch: DirectBatch) -> None:
     if review.batch_id != batch.batch_id:
         raise ValueError("model returned wrong batch_id")
@@ -219,9 +237,11 @@ def validate_direct_review(review: DirectBatchReview, batch: DirectBatch) -> Non
         if page_review.pdf_page_index != packet.pdf_page_index:
             raise ValueError("review page does not match packet")
         for edit in page_review.edits:
-            if not _locatable(packet, edit.original_text, edit.occurrence_index):
+            if not _present_in_page_text(
+                packet, edit.original_text, edit.occurrence_index
+            ):
                 raise ValueError(
-                    f"direct edit is not locatable: {packet.packet_id} "
+                    f"direct edit is not present in page text: {packet.packet_id} "
                     f"{edit.original_text!r} occurrence {edit.occurrence_index}"
                 )
 

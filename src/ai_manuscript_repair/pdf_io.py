@@ -172,8 +172,14 @@ def render_minimal_pdf(
     page_indexes: Sequence[int] | None = None,
 ) -> None:
     from pypdf import PdfReader, PdfWriter
-    from pypdf.annotations import Highlight
-    from pypdf.generic import ArrayObject, FloatObject, NameObject, TextStringObject
+    from pypdf.annotations import Highlight, Text
+    from pypdf.constants import AnnotationFlag
+    from pypdf.generic import (
+        ArrayObject,
+        FloatObject,
+        NameObject,
+        TextStringObject,
+    )
 
     reader = PdfReader(str(input_pdf))
     selected = (
@@ -198,6 +204,7 @@ def render_minimal_pdf(
     writer = PdfWriter()
     for output_index, source_index in enumerate(selected):
         source_page = reader.pages[source_index]
+        page_width = float(source_page.mediabox.width)
         page_height = float(source_page.mediabox.height)
         writer.add_page(source_page)
 
@@ -230,7 +237,37 @@ def render_minimal_pdf(
                 annotation.pop(NameObject("/T"), None)
                 writer.add_annotation(page_number=output_index, annotation=annotation)
 
+        margin_note_number = 0
         for edit in edits_by_page.get(source_index, []):
+            if not edit.rects:
+                note_size = 14.0
+                note_step = 18.0
+                notes_per_column = max(1, int((page_height - 40.0) // note_step))
+                row = margin_note_number % notes_per_column
+                column = margin_note_number // notes_per_column
+                x1 = page_width - 4.0 - column * note_step
+                x0 = x1 - note_size
+                y1 = page_height - 24.0 - row * note_step
+                y0 = y1 - note_size
+                original = edit.original_text.replace("\r", "").replace("\n", "")
+                corrected = edit.corrected_text.replace("\r", "").replace("\n", "")
+                annotation = Text(
+                    rect=(x0, y0, x1, y1),
+                    text=f"原句：{original}\n修改为：{corrected}",
+                    open=False,
+                    flags=AnnotationFlag.PRINT,
+                )
+                annotation[NameObject("/T")] = TextStringObject("修改（页边）")
+                annotation[NameObject("/Name")] = NameObject("/Comment")
+                annotation[NameObject("/C")] = ArrayObject(
+                    [FloatObject(0.91), FloatObject(0.36), FloatObject(0.25)]
+                )
+                annotation[NameObject("/NM")] = TextStringObject(
+                    f"{edit.edit_id}-MARGIN"
+                )
+                writer.add_annotation(page_number=output_index, annotation=annotation)
+                margin_note_number += 1
+                continue
             for rect_number, rect in enumerate(edit.rects, start=1):
                 bottom = page_height - rect.bottom
                 top = page_height - rect.top

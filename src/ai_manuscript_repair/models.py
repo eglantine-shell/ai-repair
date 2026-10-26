@@ -77,7 +77,7 @@ class DirectEdit(DirectEditDraft):
     edit_id: str
     packet_id: str
     pdf_page_index: int = Field(ge=0)
-    rects: list[Rect] = Field(min_length=1)
+    rects: list[Rect] = Field(default_factory=list)
 
 
 class ConsistencyOccurrenceDraft(BaseModel):

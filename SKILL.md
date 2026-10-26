@@ -5,6 +5,30 @@ description: Repair accepted Chinese AI-generated manuscripts through understand
 
 # AI Manuscript Repair
 
+## Workspace paths
+
+In the `Editor-Skills` workspace, read source manuscripts only from
+`input/ai-manuscript-repair/`, keep intermediate run data under
+`.work/ai-manuscript-repair/<run-id>/`, and place final `<run-id>.pdf` and
+`<run-id>.md` directly under `output/ai-manuscript-repair/`, without run or book
+subfolders. Use the intermediate run folder's name (book, date, page range,
+etc.) as the filename; add a descriptive suffix only to distinguish versions.
+Internal tools
+may emit generic names, but rename them only at the delivery boundary. Do not
+create an `input` or `output` directory inside this skill folder.
+
+## Preserve first-pass findings
+
+Publish every structurally valid first-pass language finding. Do not run a
+second language reviewer, reject/revise pass, or assistant-authored curation
+step after generation. Do not remove or rewrite findings because they appear
+stylistic, doubtful, unnecessary, or false positives; the user makes that
+decision. Do not apply historical suppression lists to a new run. Technical
+checks for page coverage, response schema, source identity, exact anchoring,
+and PDF annotation completeness remain required. Technical failures must be
+reported explicitly, not silently discarded. Exact duplicate merging must
+preserve the finding and its audit trail.
+
 ## Purpose
 
 Turn an accepted but difficult AI-generated manuscript into an editable work
@@ -41,12 +65,15 @@ the optional pass is enabled, a genuinely unstable page may have many marks.
 
 Create exactly these editor-facing deliverables from the same structured run:
 
-- `minimal-edits.pdf`: preserve the source PDF page order and page count. Show
+- `<run-id>.pdf`: preserve the source PDF page order and page count. Show
   direct edits as red underlines with the complete `修改为：……` stored in the
-  annotation. When and only when consistency highlighting is enabled, show
+  annotation. If exact glyph placement fails but the original text is present
+  in the extracted page text, fall back to a right-margin comment containing
+  the complete `原句：……` and `修改为：……`; do not fail the page or batch.
+  When and only when consistency highlighting is enabled, show
   every occurrence of each candidate as a yellow highlight with no contents,
   title, popup note, canonical form, or proposed edit.
-- `minimal-edits.md`: contain only `页码 | 原句 | 修改`.
+- `<run-id>.md`: contain only `页码 | 原句 | 修改`.
 
 Keep model reasons, prompt versions, hashes, failures, and provider metadata in
 the run directory. Never expose those audit details in the PDF or Markdown.
@@ -95,9 +122,13 @@ wanted:
 Before delivery, require:
 
 - every requested page has a completed direct-review record;
-- every accepted red edit copies exact source text and is precisely placed;
+- every accepted direct edit copies exact extracted page text; use a precise
+  red underline when glyph placement succeeds and a right-margin comment when
+  it does not;
 - the output PDF page count equals the selected source scope;
 - every red annotation contains the full correction and no audit reason;
+- every margin comment contains the full original and correction and no audit
+  reason;
 - Markdown has only the three required columns;
 - a rendered sample confirms red underlines are legible.
 

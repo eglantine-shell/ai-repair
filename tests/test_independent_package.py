@@ -19,6 +19,9 @@ from ai_manuscript_repair.models import (
     DirectEdit,
     DirectBatchReview,
     DirectPageReview,
+    Glyph,
+    PagePacket,
+    Rect,
 )
 from ai_manuscript_repair.pdf_io import (
     extract_page_packets,
@@ -28,7 +31,12 @@ from ai_manuscript_repair.pdf_io import (
 )
 from ai_manuscript_repair.cli import build_parser
 from ai_manuscript_repair.pipeline import parse_pages
-from ai_manuscript_repair.review import consolidate_clusters, run_reviews
+from ai_manuscript_repair.review import (
+    DirectBatch,
+    consolidate_clusters,
+    run_reviews,
+    validate_direct_review,
+)
 
 
 def build_fixture(path: Path) -> None:
@@ -52,6 +60,82 @@ def build_fixture(path: Path) -> None:
 
 
 class IndependentPackageTests(unittest.TestCase):
+    def test_direct_review_accepts_page_text_when_glyph_placement_fails(self) -> None:
+        packet = PagePacket(
+            packet_id="AMR-P0001",
+            pdf_page_index=0,
+            width=100,
+            height=100,
+            page_text="城\n府谋略",
+            glyphs=[
+                Glyph(text="城", rect=Rect(x0=0, top=10, x1=10, bottom=20)),
+                Glyph(text="a", rect=Rect(x0=10, top=12, x1=15, bottom=17)),
+                Glyph(text="府", rect=Rect(x0=20, top=10, x1=30, bottom=20)),
+                Glyph(text="谋", rect=Rect(x0=30, top=10, x1=40, bottom=20)),
+                Glyph(text="略", rect=Rect(x0=40, top=10, x1=50, bottom=20)),
+            ],
+            packet_sha256="sha256:" + "0" * 64,
+        )
+        batch = DirectBatch(
+            batch_id="DB-P0001-P0001",
+            review_sha256="sha256:" + "1" * 64,
+            core_packet_ids=(packet.packet_id,),
+            packets=(packet,),
+        )
+        review = DirectBatchReview(
+            batch_id=batch.batch_id,
+            reviews=[
+                DirectPageReview(
+                    packet_id=packet.packet_id,
+                    pdf_page_index=0,
+                    edits=[
+                        {
+                            "original_text": "城府谋略",
+                            "corrected_text": "谋略深远",
+                            "category": "wording",
+                            "reason": "搭配不当",
+                        }
+                    ],
+                )
+            ],
+        )
+
+        validate_direct_review(review, batch)
+
+        review.reviews[0].edits[0].original_text = "页面上不存在的原句"
+        with self.assertRaisesRegex(ValueError, "not present in page text"):
+            validate_direct_review(review, batch)
+
+    def test_unlocated_edit_becomes_margin_note(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.pdf"
+            output = root / "margin-note.pdf"
+            build_fixture(source)
+            edit = DirectEdit(
+                edit_id="DME-00001",
+                packet_id="AMR-P0001",
+                pdf_page_index=0,
+                original_text="城府谋略",
+                corrected_text="谋略深远",
+                category="wording",
+                reason="搭配不当",
+                rects=[],
+            )
+
+            render_minimal_pdf(source, output, [edit], [])
+
+            reader = PdfReader(str(output))
+            annotations = [
+                reference.get_object()
+                for reference in reader.pages[0].get("/Annots", [])
+            ]
+            note = next(item for item in annotations if item.get("/Subtype") == "/Text")
+            self.assertEqual(note.get("/T"), "修改（页边）")
+            self.assertEqual(
+                note.get("/Contents"), "原句：城府谋略\n修改为：谋略深远"
+            )
+
     def test_pdf_outputs_red_edits_and_silent_yellow_marks(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -87,3 +87,5 @@ python -m venv .venv
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
 ```
+
+2026-10-26 更新：主审结果不再经二次复核或主观筛除，是否采用由编辑决定；原句存在但定位失败时保留为页边批注。交付文件统一放在 `output/ai-manuscript-repair/`，按运行名称命名，不再新建子目录。

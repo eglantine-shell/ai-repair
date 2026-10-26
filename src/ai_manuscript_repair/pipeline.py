@@ -90,14 +90,18 @@ async def run_pipeline_async(
             packet = by_id[page_review.packet_id]
             for draft in page_review.edits:
                 edit_number += 1
+                try:
+                    rects = locate_text(
+                        packet, draft.original_text, draft.occurrence_index
+                    )
+                except ValueError:
+                    rects = []
                 direct_edits.append(
                     DirectEdit(
                         edit_id=f"DME-{edit_number:05d}",
                         packet_id=packet.packet_id,
                         pdf_page_index=packet.pdf_page_index,
-                        rects=locate_text(
-                            packet, draft.original_text, draft.occurrence_index
-                        ),
+                        rects=rects,
                         **draft.model_dump(),
                     )
                 )
@@ -142,6 +146,7 @@ async def run_pipeline_async(
         "input_pdf": str(input_pdf),
         "selected_page_count": len(packets),
         "direct_edit_count": len(direct_edits),
+        "margin_note_count": sum(not item.rects for item in direct_edits),
         "consistency_enabled": include_consistency,
         "consistency_cluster_count": len(clusters),
         "consistency_mark_count": len(marks),
